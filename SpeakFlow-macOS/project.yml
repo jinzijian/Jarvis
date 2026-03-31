@@ -1,0 +1,47 @@
+name: SpeakFlow
+options:
+  bundleIdPrefix: com.speakflow
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "15.0"
+
+packages:
+  HotKey:
+    url: https://github.com/soffes/HotKey
+    from: "0.2.1"
+
+targets:
+  SpeakFlow:
+    type: application
+    platform: macOS
+    sources:
+      - SpeakFlow
+    settings:
+      base:
+        INFOPLIST_FILE: SpeakFlow/Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: SpeakFlow/Resources/SpeakFlow.entitlements
+        PRODUCT_BUNDLE_IDENTIFIER: com.speakflow.macos
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        ENABLE_APP_SANDBOX: false
+        ENABLE_HARDENED_RUNTIME: true
+        CODE_SIGN_IDENTITY: "SpeakFlow Dev"
+    dependencies:
+      - package: HotKey
+
+  SpeakFlowTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - SpeakFlowTests
+    dependencies:
+      - target: SpeakFlow
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "13.0"
+        GENERATE_INFOPLIST_FILE: true
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/SpeakFlow.app/Contents/MacOS/SpeakFlow"
+        BUNDLE_LOADER: "$(TEST_HOST)"

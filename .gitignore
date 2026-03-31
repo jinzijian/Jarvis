@@ -1,0 +1,49 @@
+# Environment & Secrets
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+
+# SQLite data
+data/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# uv
+uv.lock
+
+# Planning / temp files
+task_plan.md
+findings.md
+progress.md
+
+# macOS build artifacts
+SpeakFlow-macOS/.build/
+SpeakFlow-macOS/build/
+SpeakFlow-macOS/.swiftpm/
+SpeakFlow-macOS/DerivedData/
+SpeakFlow-macOS/xcuserdata/
+*.xcuserdata/
+xcuserdata/
+*.xcuserstate
+SpeakFlow-macOS/Pods/
+*.dmg
+*.profraw
+
+# Claude
+.claude/
