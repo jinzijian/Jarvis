@@ -6,6 +6,9 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 from app.config import settings
+from app.security import audit_tool_arguments
+from app.tool_permissions import check_tool_permission
+from app.tool_validation import truncate_tool_result, validate_tool_input
 
 logger = logging.getLogger(__name__)
 
@@ -212,6 +215,29 @@ async def list_tools(req: ToolsRequest | None = None):
 
 @router.post("/execute")
 async def execute_tool(req: ExecuteRequest):
+    # Permission check
+    perm = check_tool_permission(req.tool_name)
+    if perm["behavior"] == "deny":
+        raise HTTPException(status_code=403, detail=perm["message"])
+
+    # Input validation
+    validation = validate_tool_input(req.tool_name, req.arguments)
+    if not validation.ok:
+        raise HTTPException(status_code=400, detail=validation.message)
+
+    # Security audit
+    findings = audit_tool_arguments(req.tool_name, req.arguments)
+    if findings:
+        threat_types = [f["threat_type"] for f in findings]
+        logger.warning("Security audit findings for %s: %s", req.tool_name, threat_types)
+        # Block execution if critical threats found
+        critical = {"sql_injection", "command_injection"}
+        if critical & set(threat_types):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Blocked: security audit detected {threat_types}",
+            )
+
     try:
         composio = _get_composio()
         result = composio.tools.execute(
@@ -220,8 +246,16 @@ async def execute_tool(req: ExecuteRequest):
         )
         if isinstance(result, dict):
             import json
-            return {"result": json.dumps(result, ensure_ascii=False)}
-        return {"result": str(result)}
+            raw = json.dumps(result, ensure_ascii=False)
+        else:
+            raw = str(result)
+        # Truncate large results
+        return {
+            "result": truncate_tool_result(raw),
+            "permission": perm["behavior"],
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Composio execute failed: %s %s", req.tool_name, e, exc_info=True)
         raise HTTPException(status_code=502, detail="Tool execution failed.")

@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str
     whisper_model: str = "whisper-1"
-    gpt_model: str = "gpt-4o"
+    gpt_model: str = "gpt-5.4"
     gpt_max_tokens: int = 4096
     gpt_prompt_cache_retention: Literal["in-memory", "24h"] = "24h"
 

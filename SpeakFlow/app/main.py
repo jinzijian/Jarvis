@@ -8,7 +8,7 @@ from openai import APIError
 
 from app.config import settings
 from app.db import close_db, init_db
-from app.routers import agent, composio, health, history, process, usage, vocabulary
+from app.routers import agent, composio, health, history, memory, process, usage, vocabulary
 from app.utils.exceptions import openai_exception_handler
 
 logger = logging.getLogger(__name__)
@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    from app.services.memory_service import init_memory_table
+    await init_memory_table()
     yield
     await close_db()
 
@@ -55,3 +57,4 @@ app.include_router(usage.router, prefix="/api/v1", tags=["Usage"])
 app.include_router(vocabulary.router, prefix="/api/v1", tags=["Vocabulary"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 app.include_router(composio.router, prefix="/api/v1/composio", tags=["Composio"])
+app.include_router(memory.router, prefix="/api/v1/memory", tags=["Memory"])
