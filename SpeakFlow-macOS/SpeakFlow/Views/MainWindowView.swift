@@ -7,6 +7,7 @@ private let logger = Logger(subsystem: "com.speakflow", category: "MainWindowVie
 
 enum SidebarTab: String, CaseIterable {
     case home = "Home"
+    case apiKey = "API Key"
     case shortcuts = "Shortcuts"
     case vocabulary = "Vocabulary"
     case mcp = "MCP Servers"
@@ -17,6 +18,7 @@ enum SidebarTab: String, CaseIterable {
     var icon: String {
         switch self {
         case .home: return "house.fill"
+        case .apiKey: return "key.fill"
         case .shortcuts: return "keyboard"
         case .vocabulary: return "text.book.closed.fill"
         case .mcp: return "server.rack"
@@ -212,6 +214,8 @@ struct MainWindowView: View {
                 switch selectedTab {
                 case .home:
                     HomeContent()
+                case .apiKey:
+                    APIKeyContent()
                 case .shortcuts:
                     ShortcutsContent()
                 case .vocabulary:
@@ -439,6 +443,257 @@ private struct ShortcutsContent: View {
             DashboardCard(title: "SHORTCUTS", icon: "keyboard") {
                 ShortcutsSettingsView(manager: manager)
             }
+        }
+    }
+}
+
+// MARK: - API Key Settings
+
+private struct APIKeyContent: View {
+    @State private var apiKey = ""
+    @State private var existingKeyPreview: String?
+    @State private var currentModel = ""
+    @State private var newModel = ""
+    @State private var isValidating = false
+    @State private var isSaving = false
+    @State private var isSavingModel = false
+    @State private var isValid: Bool?
+    @State private var statusMessage = ""
+    @State private var modelMessage = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("API Key")
+                .font(.system(size: 22, weight: .bold))
+
+            // Current status
+            DashboardCard(title: "OPENAI API KEY", icon: "key.fill") {
+                if let preview = existingKeyPreview {
+                    HStack(spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                            .font(.system(size: 16))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("API Key Configured")
+                                .font(.system(size: 13, weight: .medium))
+                            Text(preview)
+                                .font(.system(size: 11, design: .monospaced))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                } else {
+                    HStack(spacing: 10) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.red)
+                            .font(.system(size: 16))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No API Key Set")
+                                .font(.system(size: 13, weight: .medium))
+                            Text("SpeakFlow requires an OpenAI API key to function")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                }
+
+                Divider()
+
+                // Input
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(existingKeyPreview != nil ? "Update API Key:" : "Enter API Key:")
+                        .font(.system(size: 12, weight: .medium))
+
+                    HStack(spacing: 8) {
+                        SecureField("sk-...", text: $apiKey)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12, design: .monospaced))
+
+                        Button(action: validateAndSave) {
+                            if isValidating || isSaving {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Text("Save")
+                            }
+                        }
+                        .controlSize(.small)
+                        .disabled(apiKey.trimmingCharacters(in: .whitespaces).isEmpty || isValidating || isSaving)
+                    }
+
+                    if !statusMessage.isEmpty {
+                        HStack(spacing: 4) {
+                            Image(systemName: isValid == true ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                .foregroundColor(isValid == true ? .green : .red)
+                                .font(.system(size: 11))
+                            Text(statusMessage)
+                                .font(.system(size: 11))
+                                .foregroundColor(isValid == true ? .green : .red)
+                        }
+                    }
+                }
+
+                Divider()
+
+                Button("Get API Key from OpenAI") {
+                    if let url = URL(string: "https://platform.openai.com/api-keys") {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .font(.system(size: 12))
+            }
+
+            // Model selection
+            DashboardCard(title: "MODEL", icon: "cpu") {
+                HStack(spacing: 10) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("GPT Model")
+                            .font(.system(size: 13, weight: .medium))
+                        Text("Current: \(currentModel.isEmpty ? "loading..." : currentModel)")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                }
+
+                Divider()
+
+                HStack(spacing: 8) {
+                    TextField("e.g. gpt-5.4", text: $newModel)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.system(size: 12, design: .monospaced))
+
+                    Button(action: saveModel) {
+                        if isSavingModel {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Update")
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(newModel.trimmingCharacters(in: .whitespaces).isEmpty || isSavingModel)
+                }
+
+                if !modelMessage.isEmpty {
+                    Text(modelMessage)
+                        .font(.system(size: 11))
+                        .foregroundColor(.green)
+                }
+            }
+
+            // Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Your API key is stored in the backend's .env file and never leaves your machine.")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+        }
+        .onAppear { loadStatus() }
+    }
+
+    private func loadStatus() {
+        Task {
+            do {
+                let url = URL(string: "\(Constants.apiBaseURL)/setup/status")!
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let keySet = json["openai_api_key_set"] as? Bool, keySet,
+                       let preview = json["openai_api_key_preview"] as? String {
+                        existingKeyPreview = preview
+                    }
+                    if let model = json["gpt_model"] as? String {
+                        currentModel = model
+                        newModel = model
+                    }
+                }
+            } catch {
+                // Backend not available
+            }
+        }
+    }
+
+    private func validateAndSave() {
+        isValidating = true
+        isValid = nil
+        statusMessage = "Validating..."
+
+        Task {
+            do {
+                // Validate first
+                let validateURL = URL(string: "\(Constants.apiBaseURL)/setup/validate-key")!
+                var validateReq = URLRequest(url: validateURL)
+                validateReq.httpMethod = "POST"
+                validateReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                validateReq.httpBody = try JSONEncoder().encode(["api_key": apiKey.trimmingCharacters(in: .whitespaces)])
+
+                let (vData, _) = try await URLSession.shared.data(for: validateReq)
+                guard let vJson = try? JSONSerialization.jsonObject(with: vData) as? [String: Any],
+                      let valid = vJson["valid"] as? Bool else {
+                    isValid = false
+                    statusMessage = "Unexpected response."
+                    isValidating = false
+                    return
+                }
+
+                if !valid {
+                    isValid = false
+                    statusMessage = vJson["message"] as? String ?? "Invalid key."
+                    isValidating = false
+                    return
+                }
+
+                // Save
+                isValidating = false
+                isSaving = true
+                let saveURL = URL(string: "\(Constants.apiBaseURL)/setup/save-key")!
+                var saveReq = URLRequest(url: saveURL)
+                saveReq.httpMethod = "POST"
+                saveReq.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                saveReq.httpBody = try JSONEncoder().encode(["api_key": apiKey.trimmingCharacters(in: .whitespaces)])
+
+                let (sData, _) = try await URLSession.shared.data(for: saveReq)
+                if let sJson = try? JSONSerialization.jsonObject(with: sData) as? [String: Any],
+                   sJson["ok"] as? Bool == true,
+                   let preview = sJson["preview"] as? String {
+                    isValid = true
+                    statusMessage = "API key saved successfully."
+                    existingKeyPreview = preview
+                    apiKey = ""
+                } else {
+                    isValid = false
+                    statusMessage = "Failed to save."
+                }
+            } catch {
+                isValid = false
+                statusMessage = "Error: \(error.localizedDescription)"
+            }
+            isValidating = false
+            isSaving = false
+        }
+    }
+
+    private func saveModel() {
+        isSavingModel = true
+        modelMessage = ""
+        Task {
+            do {
+                let url = URL(string: "\(Constants.apiBaseURL)/setup/save-model")!
+                var request = URLRequest(url: url)
+                request.httpMethod = "POST"
+                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                request.httpBody = try JSONEncoder().encode(["model": newModel.trimmingCharacters(in: .whitespaces)])
+
+                let (data, _) = try await URLSession.shared.data(for: request)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   json["ok"] as? Bool == true,
+                   let model = json["model"] as? String {
+                    currentModel = model
+                    modelMessage = "Model updated to \(model)"
+                }
+            } catch {
+                modelMessage = "Failed to update model."
+            }
+            isSavingModel = false
         }
     }
 }

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
 
     # OpenAI
-    openai_api_key: str
+    openai_api_key: str = ""
     whisper_model: str = "whisper-1"
     gpt_model: str = "gpt-5.4"
     gpt_max_tokens: int = 4096

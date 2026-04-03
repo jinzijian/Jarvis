@@ -8,7 +8,7 @@ from openai import APIError
 
 from app.config import settings
 from app.db import close_db, init_db
-from app.routers import agent, composio, health, history, memory, process, usage, vocabulary
+from app.routers import agent, composio, health, history, memory, process, setup, usage, vocabulary
 from app.utils.exceptions import openai_exception_handler
 
 logger = logging.getLogger(__name__)
@@ -58,3 +58,4 @@ app.include_router(vocabulary.router, prefix="/api/v1", tags=["Vocabulary"])
 app.include_router(agent.router, prefix="/api/v1/agent", tags=["Agent"])
 app.include_router(composio.router, prefix="/api/v1/composio", tags=["Composio"])
 app.include_router(memory.router, prefix="/api/v1/memory", tags=["Memory"])
+app.include_router(setup.router, prefix="/api/v1/setup", tags=["Setup"])

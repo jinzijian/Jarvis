@@ -1,87 +1,46 @@
-# Jarvis — Your Personal AI Assistant
+# Jarvis
 
-> [中文文档](./README_CN.md)
+**Open-source voice agent for macOS.**
+Speak to type. Command your apps. Automate your workflow.
 
-**Jarvis** is an open-source, voice-first personal assistant for macOS. Speak naturally, and Jarvis transcribes, translates, rewrites, answers questions, controls your apps, and executes multi-step tasks — all powered by your own OpenAI API key.
-
----
-
-## Vision
-
-We believe the future of human-computer interaction is **voice + AI agent**. Instead of clicking through menus and typing commands, you should be able to simply *say* what you want and have an intelligent assistant execute it.
-
-Jarvis is built to be:
-
-- **Local-first** — Your data stays on your machine. No cloud accounts, no subscriptions, no tracking.
-- **Open-source** — Fully transparent, community-driven, and extensible.
-- **Voice-native** — Designed from the ground up for voice interaction, not retrofitted.
-- **Agent-capable** — Not just a dictation tool, but a full AI agent that can use tools, browse the web, read/write files, and integrate with your apps.
+[中文文档](./README_CN.md)
 
 ---
 
-## Features
+Hold a key, speak naturally, and Jarvis does the rest — from clean dictation to sending emails, managing your calendar, and executing multi-step tasks across your Mac. All powered by your own OpenAI API key. No cloud accounts, no subscriptions, fully local.
 
-### Voice Input
-Speak and get clean, punctuated text. Jarvis fixes speech-to-text errors automatically.
+<!-- TODO: Add demo GIF here -->
+<!-- ![Demo](assets/demo.gif) -->
 
-### Smart Commands
-- **Translation** — "Translate this to English"
-- **Rewriting** — "Rewrite this more formally"
-- **Any instruction** — Just say what you want done with the text.
+## Why Jarvis
 
-### Context-Aware Modes
-- **Text Selection** — Select text in any app, then speak a command to transform it.
-- **Screenshot** — Capture a screen region, then ask about it ("fix this error", "what does this mean").
-- **Full-Screen** — Jarvis sees your entire screen and responds accordingly.
+Your Mac already has dictation. ChatGPT already has voice mode. So why Jarvis?
 
-### AI Agent
-- **Multi-step task execution** — Jarvis can plan and execute complex tasks autonomously.
-- **Tool use** — Shell commands, file operations, web browsing, screen capture.
-- **MCP integration** — Connect any MCP-compatible server for extended capabilities.
-- **App integrations** — Gmail, Slack, GitHub, Google Calendar via Composio.
+**Dictation tools** give you text. **Chatbots** give you answers. **Jarvis gives you actions.**
 
-### Vocabulary Learning
-Jarvis learns your personal vocabulary — names, jargon, technical terms — and improves transcription accuracy over time.
+- Say "reply to Alice's email saying I'm free tomorrow" — it finds the email, drafts the reply, and asks you to confirm.
+- Say "what's on my calendar today" — it checks and tells you.
+- Say "translate this to Japanese" with text selected — it replaces it instantly.
+- Say "fix this error" with a screenshot — it reads your screen and gives you the fix.
 
----
+It's the difference between a transcription tool and an assistant that actually *does things*.
 
-## Architecture
-
-```
-Jarvis/
-├── SpeakFlow/          — Python FastAPI backend (Whisper + GPT, local SQLite)
-└── SpeakFlow-macOS/    — Native macOS app (Swift, menu bar, global hotkeys)
-```
-
-```
-User speaks → Whisper STT → GPT processes → Result returned
-```
-
----
-
-## Quick Start
+## Get Started
 
 ### 1. Backend
 
 ```bash
 cd SpeakFlow
-
-# Create .env with your API key
-cp .env.example .env
-# Edit .env → set OPENAI_API_KEY
-
-# Install dependencies (Python 3.12+)
-pip install -e .
-
-# Run
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+cp .env.example .env        # Then add your OPENAI_API_KEY
+pip install -e .             # Python 3.12+
+uvicorn app.main:app --port 8000
 ```
 
 ### 2. macOS App
 
-Open `SpeakFlow-macOS/SpeakFlow.xcodeproj` in Xcode and build.
+Open `SpeakFlow-macOS/SpeakFlow.xcodeproj` in Xcode, build and run.
 
-The app connects to `http://localhost:8000` by default.
+On first launch, Jarvis walks you through permissions, API key setup, and connecting your tools (Gmail, Calendar, Slack, etc.).
 
 ### 3. Docker (optional)
 
@@ -91,68 +50,97 @@ docker build -t jarvis .
 docker run -p 8000:8000 -e OPENAI_API_KEY=sk-... jarvis
 ```
 
----
+## How It Works
 
-## Configuration
+```
+You speak → Whisper transcribes → GPT understands → Agent acts → You get results
+```
 
-| Variable | Required | Description |
-|---|---|---|
-| `OPENAI_API_KEY` | Yes | Your OpenAI API key |
-| `GPT_MODEL` | No | GPT model (default: `gpt-4o`) |
-| `WHISPER_MODEL` | No | Whisper model (default: `whisper-1`) |
-| `COMPOSIO_API_KEY` | No | For app integrations (Gmail, Slack, etc.) |
+Three interaction modes:
 
----
+| Mode | How | What happens |
+|------|-----|-------------|
+| **Dictation** | Hold `Option+Z`, speak | Clean text appears at your cursor |
+| **Command** | Select text, then speak | Text is translated, rewritten, or transformed |
+| **Agent** | Double-tap `Fn`, speak | Jarvis plans and executes multi-step tasks |
 
-## API Endpoints
+## What Jarvis Can Do
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health check |
-| `POST` | `/api/v1/process` | Voice → transcription + result |
-| `POST` | `/api/v1/agent/chat` | AI agent with tool use |
-| `GET` | `/api/v1/history` | Processing history |
-| `GET` | `/api/v1/usage` | Usage stats |
-| `GET` | `/api/v1/vocabulary` | Vocabulary list |
-| `POST` | `/api/v1/composio/*` | App integrations |
+### Voice Input
+Hold a key and speak. Jarvis gives you clean, punctuated text — fixing speech-to-text errors automatically. It learns your vocabulary over time (names, jargon, technical terms).
 
----
+### Smart Commands
+Select any text, then speak: "translate to English", "make this more formal", "summarize in 3 bullets". The result replaces your selection.
+
+### Screen Understanding
+Capture your screen (or a region), then ask about it. Jarvis reads everything visible — code, errors, emails, UI — and responds in context.
+
+### AI Agent
+This is where it gets interesting. Jarvis doesn't just transcribe — it *acts*:
+
+- **Email** — Search, read, draft, reply, forward (Gmail)
+- **Calendar** — Check schedule, create events, find free time (Google Calendar)
+- **Messaging** — Send and read messages (Slack)
+- **Files** — Read, write, search across your filesystem
+- **Shell** — Execute commands, run scripts
+- **Browser** — Navigate, click, extract content (Chrome CDP)
+- **Screenshots** — Capture and analyze screen content
+- **MCP** — Connect any MCP-compatible server for custom tools
+
+The agent plans multi-step tasks, calls tools in sequence, handles errors, and reports results — all from a single voice command.
 
 ## Hotkeys
 
 | Hotkey | Action |
 |---|---|
-| `Option + Z` (hold) | Push-to-talk dictation |
+| `Option+Z` (hold) | Push-to-talk dictation |
 | `Fn` (tap) | Quick voice input |
 | `Fn` (double-tap) | Start AI Agent |
-| `Fn + Option` | Screenshot + voice command |
-| `Fn + A` | Full-screen + voice command |
+| `Fn+Option` | Screenshot + voice command |
+| `Fn+A` | Full-screen + voice command |
 
----
+## Architecture
+
+```
+Jarvis/
+├── SpeakFlow/          — Python FastAPI backend (Whisper + GPT, local SQLite)
+└── SpeakFlow-macOS/    — Native macOS app (Swift, SwiftUI, menu bar)
+```
+
+The macOS app handles voice recording, hotkeys, screen capture, and the agent tool loop. The backend handles speech-to-text, LLM calls, and data persistence. Everything runs locally.
+
+## Configuration
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `OPENAI_API_KEY` | Yes | — | Your OpenAI API key |
+| `GPT_MODEL` | No | `gpt-5.4` | GPT model for processing |
+| `WHISPER_MODEL` | No | `whisper-1` | Whisper model for transcription |
+| `COMPOSIO_API_KEY` | No | — | For app integrations (Gmail, Slack, etc.) |
+
+## Extending Jarvis
+
+### MCP Servers
+Connect any [Model Context Protocol](https://modelcontextprotocol.io) server to give Jarvis new capabilities. Configure in Settings > MCP Servers.
+
+### Composio Integrations
+Connect 100+ apps through Composio — Gmail, Slack, GitHub, Notion, and more. Authorize in Settings or during onboarding.
+
+### Custom Tools
+The agent tool system is modular. Add new tools in `SpeakFlow-macOS/SpeakFlow/Agent/Tools/`.
 
 ## Roadmap
 
-- [ ] Local STT — On-device Whisper for offline transcription
-- [ ] Multi-model support — Claude, Gemini, local LLMs
-- [ ] iOS / iPad app
-- [ ] Plugin system — Community-built extensions
-- [ ] Conversation memory — Long-term context across sessions
+- [ ] Local Whisper — On-device transcription, no API needed
+- [ ] Multi-model — Claude, Gemini, local LLMs
+- [ ] iOS app
+- [ ] Plugin marketplace
 - [ ] Proactive assistant — Jarvis suggests actions based on context
-
----
-
-## Tech Stack
-
-- **Backend:** Python, FastAPI, SQLite, OpenAI (Whisper + GPT)
-- **macOS App:** Swift, SwiftUI, AppKit
-- **Agent Tools:** Bash, file I/O, Chrome CDP, MCP protocol
-- **Integrations:** Composio (Gmail, Slack, GitHub, Google Calendar)
-
----
+- [ ] Conversation memory across sessions
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests.
+Contributions welcome. Open an issue or submit a PR.
 
 ## License
 
